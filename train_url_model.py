@@ -3,7 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-import joblib
+import pickle
 
 # 1. Create a sample dataset of Safe and Fraudulent URLs
 print("Generating URL dataset...")
@@ -48,6 +48,7 @@ y_pred = model.predict(X_test_tfidf)
 print(f"URL Model Accuracy: {accuracy_score(y_test, y_pred) * 100:.2f}%")
 
 # 6. Save the model
-joblib.dump(model, 'url_model.pkl')
-joblib.dump(vectorizer, 'url_vectorizer.pkl')
-print("✅ URL Model saved successfully!")
+with open('url_model.pkl', 'wb') as f:
+    pickle.dump(model, f)
+with open('url_vectorizer.pkl', 'wb') as f:
+    pickle.dump(vectorizer, f)

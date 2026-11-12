@@ -3,7 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import classification_report, accuracy_score
-import joblib
+import pickle
 
 print("Loading dataset...")
 # 1. Load the dataset
@@ -38,7 +38,7 @@ print(f"Accuracy: {accuracy_score(y_test, y_pred) * 100:.2f}%")
 print("\nClassification Report:\n", classification_report(y_test, y_pred))
 
 # 6. Save the model and vectorizer to files
-joblib.dump(model, 'sms_model.pkl')
-joblib.dump(vectorizer, 'sms_vectorizer.pkl')
-
-print("✅ Model and vectorizer saved successfully!")
+with open('sms_model.pkl', 'wb') as f:
+    pickle.dump(model, f)
+with open('sms_vectorizer.pkl', 'wb') as f:
+    pickle.dump(vectorizer, f)

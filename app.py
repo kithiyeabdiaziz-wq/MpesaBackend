@@ -1,22 +1,25 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import joblib
+import pickle
 import os
 
 # Initialize the app
 app = Flask(__name__)
 CORS(app)  # Allows our Android app to talk to this server
 
-# Load the trained AI Model and Vectorizer
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 print("Loading AI models...")
 try:
-    sms_model = joblib.load('sms_model.pkl')
-    sms_vectorizer = joblib.load('sms_vectorizer.pkl')
-    print("✅ Models loaded successfully!")
+    with open(os.path.join(BASE_DIR, 'sms_model.pkl'), 'rb') as f:
+        sms_model = pickle.load(f)
+    with open(os.path.join(BASE_DIR, 'sms_vectorizer.pkl'), 'rb') as f:
+        sms_vectorizer = pickle.load(f)
+    print("✅ SMS Models loaded successfully!")
 except Exception as e:
-    print(f"❌ Error loading models: {e}")
-    print("Make sure you ran train_sms_model.py first!")
+    print(f"❌ Error loading SMS models: {e}")
 
+# --- Home Route ---
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"message": "M-Pesa Phishing Detection API is running!"})
@@ -31,19 +34,15 @@ def analyze_sms():
         
     sms_text = data['text']
     
-    # 1. Extract features using the saved vectorizer
+    # Extract features using the saved vectorizer
     text_features = sms_vectorizer.transform([sms_text])
     
-    # 2. Predict using the saved model
-    # 1 = Spam/Fraudulent, 0 = Ham/Safe
+    # Predict using the saved model
     prediction = sms_model.predict(text_features)[0]
-    
-    # 3. Get probability (confidence) score
-    # predict_proba returns [[prob_safe, prob_fraud]]
     probabilities = sms_model.predict_proba(text_features)[0]
     risk_score = int(probabilities[1] * 100) # Probability of being fraudulent
     
-    # 4. Determine classification based on risk score
+    # Determine classification
     if risk_score >= 70:
         classification = "Fraudulent"
         recommendation = "Do not reply or click any links. Delete this message immediately."
@@ -57,7 +56,7 @@ def analyze_sms():
         recommendation = "This message appears normal. Stay vigilant."
         explanation = "No common phishing patterns were detected."
         
-    # 5. Find suspicious words (Simple keyword matching for explanation)
+    # Find suspicious words
     suspicious_keywords = ["mpesa", "update", "account", "suspended", "click", "link", "verify", "pin", "blocked", "reward"]
     found_words = [word for word in suspicious_keywords if word in sms_text.lower()]
     
@@ -79,14 +78,14 @@ def analyze_url():
         
     url_text = data['url']
     
-    # Load URL model
-    import os
-    if not os.path.exists('url_model.pkl'):
-        return jsonify({"error": "URL model not trained yet."}), 500
+    try:
+        with open(os.path.join(BASE_DIR, 'url_model.pkl'), 'rb') as f:
+            url_model = pickle.load(f)
+        with open(os.path.join(BASE_DIR, 'url_vectorizer.pkl'), 'rb') as f:
+            url_vectorizer = pickle.load(f)
+    except Exception as e:
+        return jsonify({"error": f"URL model not found: {e}"}), 500
         
-    url_model = joblib.load('url_model.pkl')
-    url_vectorizer = joblib.load('url_vectorizer.pkl')
-    
     # Extract features and predict
     url_features = url_vectorizer.transform([url_text])
     prediction = url_model.predict(url_features)[0]
@@ -111,4 +110,6 @@ def analyze_url():
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Cloud platforms assign a port dynamically
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
