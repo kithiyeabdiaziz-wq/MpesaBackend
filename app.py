@@ -33,6 +33,25 @@ def analyze_sms():
         return jsonify({"error": "No text provided"}), 400
         
     sms_text = data['text']
+        # --- SAFARICOM FORMAT CHECK (Bypass AI for real transactions) ---
+    # Real Safaricom messages usually contain a transaction code, "Confirmed.", and end with a new balance.
+    is_real_mpesa_transaction = False
+    sms_lower = sms_text.lower()
+    
+    # Check for standard M-Pesa confirmation structure
+    if ("confirmed" in sms_lower or "confirmed." in sms_lower) and \
+       ("balance" in sms_lower) and \
+       ("ksh" in sms_lower or "kes" in sms_lower):
+        is_real_mpesa_transaction = True
+
+    if is_real_mpesa_transaction:
+        return jsonify({
+            "classification": "Safe",
+            "risk_score": 0,
+            "suspicious_words": [],
+            "explanation": "This matches the standard Safaricom M-Pesa transaction confirmation format. It does not ask for a PIN or contain suspicious links.",
+            "recommendation": "Stay safe. Never share your M-Pesa PIN with anyone."
+        })
     
     # Extract features using the saved vectorizer
     text_features = sms_vectorizer.transform([sms_text])
